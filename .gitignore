@@ -1,0 +1,20 @@
+target/
+.bsp/
+
+project/project/
+project/target/
+.DS_Store
+.history
+.scala_dependencies
+.cache-main
+*.class
+
+# intellij idea
+*.log
+*.iml
+*.ipr
+*.iws
+.idea
+.idea/
+
+.vscode
