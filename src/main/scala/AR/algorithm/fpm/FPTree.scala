@@ -15,20 +15,14 @@ class FPTree[T] extends Serializable {
     var curr = root
     curr.count += count
     t.foreach { item =>
-      var summary = summaries.getOrElse(item, null)
-      if (summary == null) {
-        summary = new Summary[T]
-        summaries(item) = summary
-      }
+      var summary = summaries.getOrElseUpdate(item, new Summary[T])
       summary.count += count
-      var child = curr.children.getOrElse(item, null)
-      if (child == null) {
+      var child = curr.children.getOrElseUpdate(item, {
         val newNode = new Node[T](curr)
         newNode.item = item
         summary.nodes += newNode
-        child = newNode
-        curr.children(item) = newNode
-      }
+        newNode
+      })
       child.count += count
       curr = child
     }
