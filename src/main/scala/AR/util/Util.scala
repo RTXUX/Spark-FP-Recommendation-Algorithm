@@ -1,5 +1,6 @@
 package AR.util
 
+import AR.entity.AssociationRule
 import org.apache.spark.SparkContext
 
 object Util {
@@ -16,4 +17,13 @@ object Util {
     numExecutors * numCoresPerExecutor
   }
 
+  implicit object AssociationRuleOrdering extends Ordering[AssociationRule] {
+    override def compare(x: AssociationRule, y: AssociationRule): Int = {
+      if (x.confidence == y.confidence) {
+        x.consequent compare y.consequent
+      } else {
+        y.confidence compare x.confidence
+      }
+    }
+  }
 }
