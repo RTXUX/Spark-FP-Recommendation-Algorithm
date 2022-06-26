@@ -1,5 +1,6 @@
 package AR
 
+
 import AR.algorithm.fpm.FPGrowth
 import AR.algorithm.rec.UserRecommendation
 import org.apache.spark.{SparkConf, SparkContext}
@@ -12,21 +13,19 @@ import org.apache.spark.storage.StorageLevel
 import scala.reflect.{ClassTag, classTag}
 
 object Main {
-  def main(args: Array[String]): Unit = {
-    val arConf = ARConf.parseArgs(args)
-
+  private def initSparkConf(): SparkConf = {
     val conf = new SparkConf().setAppName("AR")
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     conf.registerKryoClasses(Array(classOf[FreqItemset], classOf[AssociationRule]))
+    conf
+  }
+
+  def main(args: Array[String]): Unit = {
+    val arConf = ARConf.parseArgs(args)
+    val conf = Util.adaptiveMemoryStage1(initSparkConf(), arConf)
     val sc = new SparkContext(conf)
-    if (arConf.numPartitionA == 0) {
-      arConf.numPartitionA = Util.getTotalCores(sc)
-    }
-    if (arConf.numPartitionC == 0) {
-      arConf.numPartitionC = Util.getTotalCores(sc)
-    }
     val associationRules = mineFreqPatternAndGenerateAssociationRules(sc, arConf)
-    UserRecommendation.run(sc, arConf, associationRules)
+    generateUserRecommendations(sc, arConf, associationRules)
     sc.stop()
   }
 
@@ -51,5 +50,9 @@ object Main {
     rules.unpersist()
     fpModel.freqItemsets.unpersist()
     sortedRules
+  }
+
+  def generateUserRecommendations(sc: SparkContext, arConf: ARConf, associationRules: Array[AssociationRule]): Unit = {
+    UserRecommendation.run(sc, arConf, associationRules)
   }
 }
