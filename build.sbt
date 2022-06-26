@@ -6,6 +6,9 @@ scalaVersion := "2.10.4"
 
 // idePackagePrefix := Some("org.example")
 
+javacOptions ++= Seq("-source", "1.7", "-target", "1.7")
+scalacOptions += "-target:jvm-1.7"
+
 val sparkVersion = "2.1.0"
 
 libraryDependencies ++= Seq(
