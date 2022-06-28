@@ -70,6 +70,57 @@ PFP-Growth算法的基本步骤如下：
 4. 并行FP-growth计算 这步需要进行1个完成整的Map-Reduce的过程。Mapper对应读取G-list中的一个gid，对应得到当前gid的交易。Reducer根据gid把交易划分到不同的分片中。在分片中，Reducer还会对应生成一个局部的FP-tree
 5. 聚合 这步聚合步骤4的结果，得到最后的频繁规则。
 
+对应伪代码如下：
+
+```
+//The Parallel FP-Growth Algorithm
+Procedure: Mapper(key, value=Ti)
+Load G-List;
+Generate Hash Table H from G-List;
+a[] ← Split(Ti);
+for j = |Ti| − 1 to 0 do
+    HashNum ← getHashNum(H, a[j]);
+    if HashNum = Null then
+        Delete all pairs which hash value is HashNum
+        in H;
+        Call
+        Output(hHashNum, a[0] + a[1] + ... + a[j]i);
+    end
+end
+Procedure: Reducer(key=gid,value=DBgid)
+Load G-List;
+nowGroup ← G-Listgid;
+LocalF P tree ← clear;
+foreach Ti in DB(gid) do
+    Call insert − build − f p − tree(LocalF P tree, Ti);
+end
+foreach ai in nowGroup do
+    Define and clear a size K max heap : HP;
+    Call T opKF P Growth(LocalF P tree, ai, HP);
+    foreach vi in HP do
+        Call Output(hnull, vi + supp(vi)i);
+    end
+end
+
+//The Aggregating Algorithm
+Procedure: Mapper(key, value=v + supp(v))
+foreach item ai in v do
+    Call Output(hai, v + supp(v)i);
+end
+Procedure: Reducer(key=ai, value=S(v + supp(v)))
+Define and clear a size K max heap : HP;
+foreach pattern v in v + supp(v) do
+    if |HP| < K then
+        insert v + supp(v) into HP;
+    else
+        if supp(HP[0].v) < supp(v) then
+            delete top element in HP;
+            insert v + supp(v) into HP;
+        end
+    end
+end
+Call Output(hnull, ai + Ci);
+```
 
 ## 详细的算法设计与实现 
 
