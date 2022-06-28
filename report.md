@@ -175,7 +175,25 @@ Call Output(<null, ai + C>);
   }
 ```
 
-mapper 对于交易根据 group 的划分来进行不同的组的划分
+在 `org.apache.spark.mllib.fpm.FPGrowth` 的实现中，reducer 直接按 key 聚合，然后在 FP-Tree 中提取频繁模式。
+
+```scala
+data.flatMap { transaction =>
+  genCondTransactions(transaction, itemToRank, partitioner)
+}.aggregateByKey(new FPTree[Int], partitioner.numPartitions)(
+  (tree, transaction) => tree.add(transaction, 1L),
+  (tree1, tree2) => tree1.merge(tree2))
+  .flatMap { case (part, tree) =>
+    tree.extract(minCount, x => partitioner.getPartition(x) == part)
+  }.map { case (ranks, count) =>
+  new FreqItemset(ranks.map(i => freqItems(i)).toArray, count)
+}
+```
+
+但经测试，这种实现在第一个 `flatMap` 后需要立刻求值（`aggregateByKey` 要求），占用大量内存，且按 key 聚合的性能也不尽理想。因此我们使用下面的优化算法
+
+首先 mapper 对于交易根据 group 的划分来进行不同的组的划分。
+
 ```scala
     val temp = data.flatMap { transaction =>
       genCondTransactions(transaction, itemToRank, partitioner)
@@ -200,6 +218,7 @@ mapper 对于交易根据 group 的划分来进行不同的组的划分
 ```
 
 之后 reducer 对于 FP-Growth 算法中的不同分片的 group 进行合并：
+
 ```scala
  repartitionAndSortWithinPartitions(partitioner).mapPartitions {iter =>
       //reduce
@@ -235,6 +254,7 @@ mapper 对于交易根据 group 的划分来进行不同的组的划分
 ```
 
 对于 reducer 合并后的数据会进行局部FP-Tree的生成：
+
 ```scala
     .mapPartitions { iter =>
       if (iter.hasNext) {
@@ -378,7 +398,7 @@ def adaptiveMemoryStage1(conf: SparkConf, arConf: ARConf): SparkConf = {
 
 经测算，我们发现在全量数据集上运行 PFP-Growth 大约需要每核 8G 内存。
 
-在计算推荐项阶段，并没有这么大的内存需求，因此可以扩大并行度以提升性能，然而这需要创建新的 `SparkContext`，但这在我们使用的 YARN 集群 Cluster 部署模式中不受支持，且 Spark 3.0 以上也不支持这样的做法，考虑到重新创建 `SparkContext` 存在的种种兼容性问题，我们没有在推荐阶段扩大并行度。
+在计算推荐项阶段，并没有这么大的内存需求，因此扩大并行度可以提升性能，然而这需要创建新的 `SparkContext`，但这在我们使用的 YARN 集群 Cluster 部署模式中不受支持，且 Spark 3.0 以上也不支持这样的做法，考虑到重新创建 `SparkContext` 存在的种种兼容性问题，我们没有在推荐阶段扩大并行度。
 
 
 ## 实验结果与分析
