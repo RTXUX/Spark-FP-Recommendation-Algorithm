@@ -47,9 +47,9 @@ else
         if β.support > ξ then
             Call Output(β);
         end
-        Construct β0s conditional database ;
-        Construct β0s conditional FP-tree T reeβ;
-        if T reeβ = φ then
+        Construct β's conditional database ;
+        Construct β's conditional FP-tree Treeβ;
+        if T reeβ != φ then
             Call Growth(T reeβ, β, ξ);
         end
     end
@@ -73,6 +73,18 @@ PFP-Growth算法的基本步骤如下：
 对应伪代码如下：
 
 ```
+// The Parallel Counting Algorithm
+Procedure: Mapper(key, value=Ti)
+foreach item ai in Ti do
+    Call Output(hai,0 10i);
+end
+Procedure: Reducer(key=ai, value=S(ai)) 
+C ← 0;
+foreach item '1' in Ti do
+    C ← C + 1;
+end
+Call Output(<null, ai + C>);
+
 //The Parallel FP-Growth Algorithm
 Procedure: Mapper(key, value=Ti)
 Load G-List;
@@ -84,7 +96,7 @@ for j = |Ti| − 1 to 0 do
         Delete all pairs which hash value is HashNum
         in H;
         Call
-        Output(hHashNum, a[0] + a[1] + ... + a[j]i);
+        Output(<HashNum, a[0] + a[1] + ... + a[j]>);
     end
 end
 Procedure: Reducer(key=gid,value=DBgid)
@@ -98,7 +110,7 @@ foreach ai in nowGroup do
     Define and clear a size K max heap : HP;
     Call T opKF P Growth(LocalF P tree, ai, HP);
     foreach vi in HP do
-        Call Output(hnull, vi + supp(vi)i);
+        Call Output(<null, vi + supp(vi)>);
     end
 end
 
@@ -119,7 +131,7 @@ foreach pattern v in v + supp(v) do
         end
     end
 end
-Call Output(hnull, ai + Ci);
+Call Output(<null, ai + C>);
 ```
 
 ## 详细的算法设计与实现 
