@@ -139,3 +139,59 @@ Call Output(<null, ai + C>);
 ## 实验结果与分析
 
 ## 程序代码说明
+
+代码的组织结构如下：
+```
+├── README.md //说明文件
+├── build.sbt //配置文件
+├── default.properties
+├── project
+│   ├── META-INF
+│   │   └── MANIFEST.MF
+│   ├── build.properties
+│   └── plugins.sbt
+├── report.md
+├── sbt
+│   └── sbt
+└── src //源代码
+    └── main
+        └── scala
+            └── AR
+                ├── Main.scala
+                ├── algorithm 
+                │   ├── fpm //pfp-growth算法
+                │   │   ├── FPGrowth.scala
+                │   │   └── FPTree.scala
+                │   └── rec //推荐算法
+                │       └── UserRecommendation.scala
+                ├── config
+                │   └── ARConf.scala
+                ├── entity 
+                │   ├── AssociationRule.scala
+                │   └── FreqItemset.scala
+                └── util 
+                    └── Util.scala
+```
+
+程序编译方法：
+
+编译 SBT 项目得到 `jar` 文件，程序通过Intellij进行打包
+
+代码运行使用说明：
+
+```bash
+spark-submit \
+	--master yarn\
+	--deploy-mode cluster \
+	--class AR.Main \
+	--name "AR" \
+	--executor-memory 100G \
+	--executor-cores 32G \
+	--num-executors 1 \
+	${JAR_PATH} \
+	${INPUT_DATA_DIRECTORY_PATH} \
+	${OUTPUT_DATA_DIRECTORY_PATH} \
+	${TEMP_DIRECTORY} \
+```
+
+本程序假设 `${INPUT_DATA_DIRECTORY_PATH}` 下存有购物篮数据集 `D.dat` 和用户概貌数据集 `U.dat` ，`${OUTPUT_DATA_DIRECTORY_PATH}` 和 `${TEMP_DIRECTORY}` 存在且为空。生成的频繁模式和推荐结果分别保存在 `${OUTPUT_DATA_DIRECTORY_PATH}` 下的 `Freq` 和 `Rec`。
