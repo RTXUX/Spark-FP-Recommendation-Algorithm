@@ -2,10 +2,10 @@
 
 ## 并行化设计思路和方法 
 
-算法首先基于PFP-Growth算法,它是一个对于FP-Growth算法的基础上使用了Map-Reduce的思想进行并行化处理得到的算法。
-FP-Growths算法的基本思路是：
+算法首先基于 PFP-Growth 算法,它是一个对于 FP-Growth 算法的基础上使用了 Map-Reduce 的思想进行并行化处理得到的算法。
+FP-Growth 算法的基本思路是：
 1. 第一次扫描数据库，寻找频繁1-项集，并按照由大到小的顺序排序。
-2. 创建FP模式树的根结点，记为“null”。
+2. 创建FP模式树的根结点，记为 `null`。
 3. 根据频繁1-项集的顺序对数据库中的每条事务数据进行排序，并存储在FP模式树中，并建立项头表。
 4. 为每一个频繁1-项集寻找前缀路径，组成条件模式基，并建立条件FP树。
 5. 递归挖掘条件FP树，获得频繁项集。
@@ -57,18 +57,18 @@ end
 
 ```
 
-PFP-Growth算法对于数据挖掘中的海量大数据进行分片，采用并行化处理的方式来解决问题。在FP-Growth算法的基础上进行了处理：
-1. 在存储，上对于在FP-Growth算法上巨大的FP-tree进行了划分得到更小局部FP-tree。因此，新的数据可以在内存中直接存放。
-2. 在计算上，对于FP-Growth的算法进行了并行化处理，尤其是对于递归函数Growth()进行了并行。
-3. 在通信上，对于FP-Growth算法的并行中，通过对于数据的合理划分，减少了跨组的交易通信，得到更好的秉性度。
+PFP-Growth 算法对于数据挖掘中的海量大数据进行分片，采用并行化处理的方式来解决问题。在 FP-Growth 算法的基础上进行了处理：
+1. 在存储，上对于在 FP-Growth 算法上巨大的 FP-tree 进行了划分得到更小局部 FP-tree。因此，新的数据可以在内存中直接存放。
+2. 在计算上，对于 FP-Growth 的算法进行了并行化处理，尤其是对于递归函数 `Growth()` 进行了并行。
+3. 在通信上，对于 FP-Growth 算法的并行中，通过对于数据的合理划分，减少了跨组的交易通信，得到更好的秉性度。
 4. 在参数ξ最小支持度阈值上，可以支持很小的阈值。
 
-PFP-Growth算法的基本步骤如下：
-1. 分片 对于DB进行划分，存储在不同的partition上。
-2. 并行计算 进行一个Map-Reduce的过程。计数不同的item，每个mapper对于一个DB的分片计数，reducer进行合并，结果存储在F-list中。
-3. Item分组 对于F-list中的item进行group划分为G-list，每个G-list对应一个不同的gid。
-4. 并行FP-growth计算 这步需要进行1个完成整的Map-Reduce的过程。Mapper对应读取G-list中的一个gid，对应得到当前gid的交易。Reducer根据gid把交易划分到不同的分片中。在分片中，Reducer还会对应生成一个局部的FP-tree
-5. 聚合 这步聚合步骤4的结果，得到最后的频繁规则。
+PFP-Growth 算法的基本步骤如下：
+1. **分片** 对于 DB 进行划分，存储在不同的 partition 上。
+2. **并行计算** 进行一个 Map-Reduce 的过程。计数不同的 item，每个 mapper 对于一个 DB 的分片计数，reducer 进行合并，结果存储在F-list中。
+3. **Item分组** 对于 F-list 中的 item 进行 group 划分为 G-list，每个 G-list 对应一个不同的 gid。
+4. **并行 FP-Growth 计算** 这步需要进行1个完成整的 Map-Reduce 的过程。Mapper 对应读取 G-list 中的一个gid，对应得到当前 gid 的交易。Reducer 根据 gid 把交易划分到不同的分片中。在分片中，Reducer 还会对应生成一个局部的 FP-tree。
+5. **聚合** 这步聚合步骤4的结果，得到最后的频繁规则。
 
 对应伪代码如下：
 
@@ -137,7 +137,7 @@ Call Output(<null, ai + C>);
 ## 详细的算法设计与实现 
 
 ### 频繁模式挖掘
-对于不同的item，作为不同的key，进行一个Map-Reduce。每个mapper对于一个DB的分片计数，reducer进行合并，结果存储在F-list中
+对于不同的 item ，作为不同的 key ，进行一个 Map-Reduce 。每个 mapper 对于一个 DB 的分片计数，reducer 进行合并，结果存储在 F-list 中
 ```scala 
   private def genFreqItems(data: RDD[Array[Int]], minCount: Long, partitioner: Partitioner): Array[Int] = {
     data.flatMap(t => t).map(v => (v, 1L))
@@ -149,7 +149,7 @@ Call Output(<null, ai + C>);
   }
 ```
 
-划分Group item，根据交易来进行划分
+划分 Group item ，根据交易来进行划分
 
 ```scala
   private def genCondTransactions(transaction: Array[Int], itemToRank: Map[Int, Int], partitioner: Partitioner): mutable.ArrayBuffer[Array[Int]] = {
@@ -175,7 +175,7 @@ Call Output(<null, ai + C>);
   }
 ```
 
-mapper对于交易感觉group的划分来进行不同的组的划分
+mapper 对于交易根据 group 的划分来进行不同的组的划分
 ```scala
     val temp = data.flatMap { transaction =>
       genCondTransactions(transaction, itemToRank, partitioner)
@@ -199,9 +199,9 @@ mapper对于交易感觉group的划分来进行不同的组的划分
     }.map(tuple => (partitioner.getPartition(tuple._1.last), (tuple._1, tuple._2)))
 ```
 
-之后reduce对于FP-Growth算法中的不同分片的group进行合并：
+之后 reducer 对于 FP-Growth 算法中的不同分片的 group 进行合并：
 ```scala
- .repartitionAndSortWithinPartitions(partitioner).mapPartitions {iter =>
+ repartitionAndSortWithinPartitions(partitioner).mapPartitions {iter =>
       //reduce
       val coArr = mutable.ArrayBuffer.empty[(Int, (Array[Int], Long))]
       var pair = mutable.Map.empty[Array[Int], Long]
@@ -234,7 +234,7 @@ mapper对于交易感觉group的划分来进行不同的组的划分
     }.
 ```
 
-对于reducer合并后的数据会进行局部FP-Tree的生成：
+对于 reducer 合并后的数据会进行局部FP-Tree的生成：
 ```scala
     .mapPartitions { iter =>
       if (iter.hasNext) {
@@ -265,6 +265,7 @@ mapper对于交易感觉group的划分来进行不同的组的划分
 ```
 
 最后对于结果进行聚合，其中需要注意的是，只需要获取比阈值大的部分：
+
 ```scala
     val gen = temp.flatMap{ case(part, tree) =>
       tree.extract(minCount, x => partitioner.getPartition(x) == part)
@@ -354,18 +355,40 @@ for (i <- splitRDDs.indices) {
 splitRDDs.reduce(_ ++ _).sortByKey().map(_._2).saveAsTextFile(arConf.outputFilePath + "/Rec")
 ```
 
-在上述代码中，我们发现 `sortByKey` 算子虽然是个 `transformation` 但是却会触发 `event` ，导致推荐过程计算两次，因此我们在每个 `splitRDD` 最后加上 `.persist(StorageLevel.MEMORY_AND_DISK)`，以缓存该 RDD 计算结果，避免推荐过程执行两遍。
+在上述代码中，我们发现 `sortByKey` 算子虽然是个 transformation 但是却会触发 event ，导致推荐过程计算两次，因此我们在每个 `splitRDD` 最后加上 `.persist(StorageLevel.MEMORY_AND_DISK)`，以缓存该 RDD 计算结果，避免推荐过程执行两遍。
 
+### 自适应资源使用
+
+我们发现若使用全部可用核心运行 PFP-Growth 算法可能导致堆内存不足，Worker JVM 忙于 GC 进而与 Spark 主进程失联，因此我们使用了一种自适应的方法来确定所要使用的并行度，即根据分配的内存和核心数确定实际运行所使用的核心数。
+
+```scala
+def adaptiveMemoryStage1(conf: SparkConf, arConf: ARConf): SparkConf = {
+    val execCores = conf.getInt("spark.executor.cores", 24)
+    val memoryAllocated = conf.getSizeAsGb("spark.executor.memory", "30G")
+    val executors = conf.getInt("spark.executor.instances", 1)
+    val adaptiveCores = Math.max(Math.min(execCores, memoryAllocated / 8).toInt, 1)
+    val partitions = adaptiveCores * executors * 16
+    arConf.numPartitionA = partitions
+    val res = conf.clone()
+    res.set("spark.driver.allowMultipleContexts", "true")
+    res.set("spark.executor.cores", adaptiveCores.toString)
+    res
+}
+```
+
+经测算，我们发现在全量数据集上运行 PFP-Growth 大约需要每核 8G 内存。
+
+在计算推荐项阶段，并没有这么大的内存需求，因此可以扩大并行度以提升性能，然而这需要创建新的 `SparkContext`，但这在我们使用的 YARN 集群 Cluster 部署模式中不受支持，且 Spark 3.0 以上也不支持这样的做法，考虑到重新创建 `SparkContext` 存在的种种兼容性问题，我们没有在推荐阶段扩大并行度。
 
 
 ## 实验结果与分析
 
 ## 程序代码说明
 
-代码的组织结构如下：
+### 代码组织结构
 ```
-├── README.md //说明文件
-├── build.sbt //配置文件
+├── README.md // 说明文件
+├── build.sbt // SBT配置文件
 ├── default.properties
 ├── project
 │   ├── META-INF
@@ -379,27 +402,33 @@ splitRDDs.reduce(_ ++ _).sortByKey().map(_._2).saveAsTextFile(arConf.outputFileP
     └── main
         └── scala
             └── AR
-                ├── Main.scala
+                ├── Main.scala // 主程序
                 ├── algorithm 
-                │   ├── fpm //pfp-growth算法
+                │   ├── fpm // PFP-Growth 算法
                 │   │   ├── FPGrowth.scala
-                │   │   └── FPTree.scala
-                │   └── rec //推荐算法
+                │   │   └── FPTree.scala // FP-Tree 数据结构实现
+                │   └── rec // 推荐算法
                 │       └── UserRecommendation.scala
                 ├── config
-                │   └── ARConf.scala
-                ├── entity 
+                │   └── ARConf.scala // 运行时配置
+                ├── entity // 实体类
                 │   ├── AssociationRule.scala
                 │   └── FreqItemset.scala
-                └── util 
+                └── util // 辅助工具包
                     └── Util.scala
 ```
 
-程序编译方法：
+### 程序编译方法
 
-编译 SBT 项目得到 `jar` 文件，程序通过Intellij进行打包
+在代码根目录(`build.sbt`所在目录)下运行：
 
-代码运行使用说明：
+```shell
+sbt package
+```
+
+完成后即可在 `target/scala-2.10` 目录下找到 jar 包。
+
+### 代码运行说明
 
 ```bash
 spark-submit \
