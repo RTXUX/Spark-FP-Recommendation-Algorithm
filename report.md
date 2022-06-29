@@ -492,7 +492,7 @@ spark-submit \
 	--class AR.Main \
 	--name "AR" \
 	--executor-memory 100G \
-	--executor-cores 32G \
+	--executor-cores 32 \
 	--num-executors 1 \
 	${JAR_PATH} \
 	${INPUT_DATA_DIRECTORY_PATH} \
