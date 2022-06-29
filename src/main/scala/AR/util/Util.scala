@@ -32,7 +32,12 @@ object Util {
     val execCores = conf.getInt("spark.executor.cores", 24)
     val memoryAllocated = conf.getSizeAsGb("spark.executor.memory", "30G")
     val executors = conf.getInt("spark.executor.instances", 1)
-    val adaptiveCores = Math.max(Math.min(execCores, memoryAllocated / 8).toInt, 1)
+    val adaptiveCores = if (!arConf.smallset){
+      Math.max(Math.min(execCores, memoryAllocated / 8).toInt, 1)
+    } else {
+      println("Running on small dataset, not using adaptive strategy")
+      Math.max(execCores, 1)
+    }
     val partitions = adaptiveCores * executors * 16
     arConf.numPartitionA = partitions
     arConf.numPartitionC = partitions / 16

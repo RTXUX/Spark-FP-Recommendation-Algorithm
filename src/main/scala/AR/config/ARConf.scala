@@ -5,7 +5,8 @@ class ARConf(
                    var outputFilePath: String = null,
                    var tempFilePath: String = null,
                    var numPartitionA: Int = 0,
-                   var numPartitionC: Int = 0
+                   var numPartitionC: Int = 0,
+                   var smallset: Boolean = false
                  )
 
 object ARConf {
@@ -18,6 +19,9 @@ object ARConf {
         case "--numPartitionA" => arConf.numPartitionA = otherArgs(2 * i + 1).toInt
         case "--numPartitionC" => arConf.numPartitionC = otherArgs(2 * i + 1).toInt
       }
+    }
+    if (otherArgs.contains("--smallset")) {
+      arConf.smallset = true
     }
     arConf.inputFilePath = args(0)
     arConf.outputFilePath = args(1)

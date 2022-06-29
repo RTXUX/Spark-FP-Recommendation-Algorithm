@@ -502,9 +502,12 @@ spark-submit \
 	${INPUT_DATA_DIRECTORY_PATH} \
 	${OUTPUT_DATA_DIRECTORY_PATH} \
 	${TEMP_DIRECTORY} \
+	[--smallset]
 ```
 
 本程序假设 `${INPUT_DATA_DIRECTORY_PATH}` 下存有购物篮数据集 `D.dat` 和用户概貌数据集 `U.dat` ，`${OUTPUT_DATA_DIRECTORY_PATH}` 和 `${TEMP_DIRECTORY}` 存在且为空。生成的频繁模式和推荐结果分别保存在 `${OUTPUT_DATA_DIRECTORY_PATH}` 下的 `Freq` 和 `Rec`。
+
+`--smallset` 为可选参数，用于告知程序其在小数据集上运行，不需要限制并行度，它必须位于 `${TEMP_DIRECTORY}` 参数后面。
 
 # 附录A 组员和分工
 
