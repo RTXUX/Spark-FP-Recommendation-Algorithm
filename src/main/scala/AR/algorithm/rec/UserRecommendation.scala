@@ -20,7 +20,7 @@ object UserRecommendation {
 
   def run(sc: SparkContext, arConf: ARConf, assRule: Array[AssociationRule]): Unit = {
     val userData = sc.textFile(arConf.inputFilePath + "/U.dat", arConf.numPartitionC)
-      .map(i => i.trim.split(' ').map(f => f.toInt).sorted).map(i => HashSet(i: _*)).zipWithIndex()
+      .map(i => i.trim.split(' ').map(f => f.toInt).sorted).map(i => HashSet(i: _*)).zipWithIndex().persist(StorageLevel.MEMORY_AND_DISK)
 
     val assRulesBroadcast = sc.broadcast(assRule)
 
@@ -56,6 +56,8 @@ object UserRecommendation {
       }
       res.iterator
     }
+
+    // userData.mapPartitions(doUserRec).persist(StorageLevel.MEMORY_AND_DISK).sortByKey().map(_._2).saveAsTextFile(arConf.outputFilePath + "/Rec")
 
     val splitPoint = Array(25, 50, 100, 500)
     val splitRDDs = Array.ofDim[RDD[(Long, Int)]](splitPoint.length + 1)

@@ -35,6 +35,7 @@ object Util {
     val adaptiveCores = Math.max(Math.min(execCores, memoryAllocated / 8).toInt, 1)
     val partitions = adaptiveCores * executors * 16
     arConf.numPartitionA = partitions
+    arConf.numPartitionC = partitions / 16
     val res = conf.clone()
     res.set("spark.driver.allowMultipleContexts", "true")
     res.set("spark.executor.cores", adaptiveCores.toString)
