@@ -438,6 +438,10 @@ def adaptiveMemoryStage1(conf: SparkConf, arConf: ARConf): SparkConf = {
 | 改进的 PFP-Growth                      | 3467 s   | 7.29               |
 | 改进的 PFP-Growth + 用户概貌数据重分区 | 2358 s   | 10.7               |
 
+### 分析
+
+从实验结果可以看出，改进 PFP-Growth 算法取得的提升最大，说明 `org.apache.spark.mllib.fpm.FPGrowth` 的实现性能并不理想，而将用户概貌数据重分区也解决了用户概貌数据分布不均的问题，取得了一定提升。此外，我们比较了几种方法生成的频繁模式文件，并没有发现区别，说明了几种方法的等价性。
+
 ## 程序代码说明
 
 ### 代码组织结构
