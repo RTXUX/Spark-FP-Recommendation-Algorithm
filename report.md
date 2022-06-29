@@ -54,7 +54,6 @@ else
         end
     end
 end
-
 ```
 
 PFP-Growth 算法对于数据挖掘中的海量大数据进行分片，采用并行化处理的方式来解决问题。在 FP-Growth 算法的基础上进行了处理：
@@ -139,20 +138,20 @@ Call Output(<null, ai + C>);
 ### 频繁模式挖掘
 对于不同的 item ，作为不同的 key ，进行一个 Map-Reduce 。每个 mapper 对于一个 DB 的分片计数，reducer 进行合并，结果存储在 F-list 中
 ```scala 
-  private def genFreqItems(data: RDD[Array[Int]], minCount: Long, partitioner: Partitioner): Array[Int] = {
+private def genFreqItems(data: RDD[Array[Int]], minCount: Long, partitioner: Partitioner): Array[Int] = {
     data.flatMap(t => t).map(v => (v, 1L))
       .reduceByKey(partitioner, _ + _)
       .filter(_._2 >= minCount)
       .collect()
       .sortBy(-_._2)
       .map(_._1)
-  }
+}
 ```
 
 划分 Group item ，根据交易来进行划分
 
 ```scala
-  private def genCondTransactions(transaction: Array[Int], itemToRank: Map[Int, Int], partitioner: Partitioner): mutable.ArrayBuffer[Array[Int]] = {
+private def genCondTransactions(transaction: Array[Int], itemToRank: Map[Int, Int], partitioner: Partitioner): mutable.ArrayBuffer[Array[Int]] = {
     val res = mutable.ArrayBuffer.empty[Array[Int]]
     val group = mutable.Set.empty[Int]
     val filtered = transaction.flatMap(itemToRank.get)
@@ -172,7 +171,7 @@ Call Output(<null, ai + C>);
     res
     //对应交易从多到少的一个划分
     //res是一个根据group的分组，结果是分组后的交易
-  }
+}
 ```
 
 在 `org.apache.spark.mllib.fpm.FPGrowth` 的实现中，reducer 直接按 key 聚合，然后在 FP-Tree 中提取频繁模式。
@@ -195,32 +194,32 @@ data.flatMap { transaction =>
 首先 mapper 对于交易根据 group 的划分来进行不同的组的划分。
 
 ```scala
-    val temp = data.flatMap { transaction =>
-      genCondTransactions(transaction, itemToRank, partitioner)
-    }.mapPartitions {iter =>
+val temp = data.flatMap { transaction =>
+    genCondTransactions(transaction, itemToRank, partitioner)
+}.mapPartitions {iter =>
     //iter 对应为（txid, index）
-      val pair = mutable.Map.empty[Array[Int], Long]
-      while(iter.hasNext) {
+    val pair = mutable.Map.empty[Array[Int], Long]
+    while(iter.hasNext) {
         val arr = iter.next()
         val value = pair.get(arr)
         if (value.isEmpty) {
-          pair(arr) = 1L
+            pair(arr) = 1L
         } else {
-          pair(arr) = value.get + 1L
+            pair(arr) = value.get + 1L
         }
         //对应为每个分组的大小
-      }
-      pair.iterator
-      //pair(grouptx,count)
-      //tuple (groupid,(grouptx,count))
-      //map
-    }.map(tuple => (partitioner.getPartition(tuple._1.last), (tuple._1, tuple._2)))
+    }
+    pair.iterator
+    //pair(grouptx,count)
+    //tuple (groupid,(grouptx,count))
+    //map
+}.map(tuple => (partitioner.getPartition(tuple._1.last), (tuple._1, tuple._2)))
 ```
 
 之后 reducer 对于 FP-Growth 算法中的不同分片的 group 进行合并：
 
 ```scala
- repartitionAndSortWithinPartitions(partitioner).mapPartitions {iter =>
+repartitionAndSortWithinPartitions(partitioner).mapPartitions {iter =>
       //reduce
       val coArr = mutable.ArrayBuffer.empty[(Int, (Array[Int], Long))]
       var pair = mutable.Map.empty[Array[Int], Long]
@@ -250,49 +249,49 @@ data.flatMap { transaction =>
       pair.foreach(t => coArr.append((pre, (t._1, t._2))))
       coArr.iterator
       //input (groupid,(groupdtx, count))
-    }.
+}
 ```
 
 对于 reducer 合并后的数据会进行局部FP-Tree的生成：
 
 ```scala
-    .mapPartitions { iter =>
-      if (iter.hasNext) {
+.mapPartitions { iter =>
+    if (iter.hasNext) {
         val res = mutable.ArrayBuffer.empty[(Int, FPTree[Int])]
         var pre = iter.next()
         var fpTree = new FPTree[Int]()
         fpTree.add(pre._2._1, pre._2._2)
         while(iter.hasNext) {
-          val cur = iter.next()
-          if (cur._1 == pre._1) {
-              //同一组的在同一个子树上
-            fpTree.add(cur._2._1, cur._2._2)
-          } else {
-              //新的子树
-            res += ((pre._1, fpTree))
-            fpTree = new FPTree[Int]()
-            pre = cur
-            fpTree.add(pre._2._1, pre._2._2)
-          }
+            val cur = iter.next()
+            if (cur._1 == pre._1) {
+                //同一组的在同一个子树上
+                fpTree.add(cur._2._1, cur._2._2)
+            } else {
+                //新的子树
+                res += ((pre._1, fpTree))
+                fpTree = new FPTree[Int]()
+                pre = cur
+                fpTree.add(pre._2._1, pre._2._2)
+            }
         }
         //groupid，tree
         res += ((pre._1, fpTree))
         res.toArray.toIterator
-      } else {
+    } else {
         Iterator.empty
-      }
-    }  //reduce
+    }
+}  //reduce
 ```
 
 最后对于结果进行聚合，其中需要注意的是，只需要获取比阈值大的部分：
 
 ```scala
-    val gen = temp.flatMap{ case(part, tree) =>
-      tree.extract(minCount, x => partitioner.getPartition(x) == part)
-    } //aggregate
-    gen.map { case(ranks, count) =>
-      new FreqItemset(ranks.map(i => freqItems(i)).toArray, count)
-    }
+val gen = temp.flatMap{ case(part, tree) =>
+    tree.extract(minCount, x => partitioner.getPartition(x) == part)
+} //aggregate
+gen.map { case(ranks, count) =>
+    new FreqItemset(ranks.map(i => freqItems(i)).toArray, count)
+}
 ```
 
 
@@ -324,6 +323,8 @@ candidates.join(freqItemsets.map(x => (x.items.toSeq, x.freq)))
 
 受益于 Spark RDD 的延迟执行特性，Spark 可以获知 `candidates` 所进行的后续运算操作，并对执行的 DAG 进行充分优化，因此该代码在实际执行过程中并不会在内存中保存完整的 `candidates` ，而只保存存在匹配的，可以节约大量内存。
 
+![](.md-assets/assrule-gen.png)
+
 ### 生成推荐项
 
 根据赛题任务，只需输出每一用户置信度最大的推荐结果，如果置信度最大的项有多个，则给出编号最小的项作为结果，因此可以首先按置信度降序，后项升序对关联规则进行排序，这样后续在进行用户推荐的时候，只需要搜索到第一个匹配规则即可。这里使用 Spark 的 `sortBy` 算子配合自定义 `Ordering` 类完成。
@@ -352,7 +353,7 @@ val userData = sc.textFile(arConf.inputFilePath + "/U.dat", arConf.numPartitionC
 userData.mapPartitions(doUserRec).map(_._2).saveAsTextFile(arConf.outputFilePath + "/Rec")
 ```
 
-但是我们发现，Spark 默认按照数据在文件中的位置对数据条目进行分区，而用户概貌数据文件中靠前的条目普遍较小而且容易匹配到，靠后的条目普遍较大且较不易匹配到，这造成计算压力分布不均，导致最后存在部分分区执行时间比其他分区长得多，不能充分利用数据划分的并行加速。因此，我们对每一用户概貌条目跟踪其在文件中的位置，然后对数据进行了 `repartition` 将数据随机进行重新分区，这样可使每个分区所需计算时间趋于一致。最后按跟踪的条目位置将结果排序写出，这样可充分利用数据划分的并行能力。
+但是我们发现，Spark 按照数据在文件中的位置对数据条目进行自然分区，而用户概貌数据文件中靠前的条目普遍较小而且容易匹配到，靠后的条目普遍较大且较不易匹配到，这造成计算压力分布不均，导致最后存在部分分区执行时间比其他分区长得多，不能充分利用数据划分的并行加速。因此，我们对每一用户概貌条目跟踪其在文件中的位置，然后对数据进行了 `repartition` 将数据随机进行重新分区，这样可使每个分区所需计算时间趋于一致。最后按跟踪的条目位置将结果排序写出，这样可充分利用数据划分的并行能力。
 
 此外，我们还将数据按大小划分为几个部分并分别进行重新分区和计算，更有利于负载均衡。
 
@@ -377,9 +378,11 @@ splitRDDs.reduce(_ ++ _).sortByKey().map(_._2).saveAsTextFile(arConf.outputFileP
 
 在上述代码中，我们发现 `sortByKey` 算子虽然是个 transformation 但是却会触发 event ，导致推荐过程计算两次，因此我们在每个 `splitRDD` 最后加上 `.persist(StorageLevel.MEMORY_AND_DISK)`，以缓存该 RDD 计算结果，避免推荐过程执行两遍。
 
+![](.md-assets/repartition-rec.png)
+
 ### 自适应资源使用
 
-我们发现若使用全部可用核心运行 PFP-Growth 算法可能导致堆内存不足，Worker JVM 忙于 GC 进而与 Spark 主进程失联，因此我们使用了一种自适应的方法来确定所要使用的并行度，即根据分配的内存和核心数确定实际运行所使用的核心数。
+我们发现若使用全部可用核心运行 PFP-Growth 算法可能导致堆内存不足，Worker JVM 忙于 GC 而与 Spark 主进程失联，因此我们使用了一种自适应的方法来确定所要使用的并行度，即根据分配的内存和核心数确定实际运行所使用的核心数。
 
 ```scala
 def adaptiveMemoryStage1(conf: SparkConf, arConf: ARConf): SparkConf = {
@@ -389,6 +392,7 @@ def adaptiveMemoryStage1(conf: SparkConf, arConf: ARConf): SparkConf = {
     val adaptiveCores = Math.max(Math.min(execCores, memoryAllocated / 8).toInt, 1)
     val partitions = adaptiveCores * executors * 16
     arConf.numPartitionA = partitions
+    arConf.numPartitionC = partitions / 16
     val res = conf.clone()
     res.set("spark.driver.allowMultipleContexts", "true")
     res.set("spark.executor.cores", adaptiveCores.toString)
@@ -400,8 +404,38 @@ def adaptiveMemoryStage1(conf: SparkConf, arConf: ARConf): SparkConf = {
 
 在计算推荐项阶段，并没有这么大的内存需求，因此扩大并行度可以提升性能，然而这需要创建新的 `SparkContext`，但这在我们使用的 YARN 集群 Cluster 部署模式中不受支持，且 Spark 3.0 以上也不支持这样的做法，考虑到重新创建 `SparkContext` 存在的种种兼容性问题，我们没有在推荐阶段扩大并行度。
 
-
 ## 实验结果与分析
+
+### 实验环境
+
+实验在虚拟机中运行，配置如下表所示
+
+| 项目     | 值                                   |
+| -------- | ------------------------------------ |
+| CPU      | 36 x Intel Xeon E5-2680v3 @ 2.50 GHz |
+| 内存     | 120G DDR4                            |
+| 硬盘     | 128G HDD                             |
+| 操作系统 | CentOS 7.9                           |
+| Hadoop   | 2.7.3                                |
+| Spark    | 2.1.0                                |
+| JVM      | OpenJDK 1.8.0_332                    |
+| Scala    | 2.10.4                               |
+
+### 实验设置
+
+在上述实验环境下，搭建单副本单节点 HDFS 集群和单节点 YARN 集群，Spark 使用 YARN 调度器，部署模式为 Cluster，运行时为 Spark 任务分配 32 虚拟 CPU 核心，100G 内存。
+
+使用的购物篮数据集为 `webdocs.dat` 全量数据集，用户概貌数据集为 `webdocs_20percent.txt`。分别测试了使用 Spark 原始算法(`org.apache.spark.mllib.fpm.FPGrowth`)和依次加入改进的 PFP-Growth 算法、改进的用户概貌数据重分区方法的情况下程序总执行时间。由于用户概貌数据集没有提供标准答案，测试样本数据集中也没有提供运行参数，故没有计算推荐准确率。运行时并行度由 `Util.adaptiveMemoryStage1` 进行自适应限制，避免内存不足。
+
+挖掘频繁模式的最小支持度为 `0.092` ，生成关联规则的最小置信度在赛题中没有要求，故设置为 `0.0`。
+
+### 实验结果
+
+| 算法配置                               | 执行时间 | 加速比(相对于原始) |
+| -------------------------------------- | -------- | ------------------ |
+| Spark 原始算法                         | 25279 s  | 1.00               |
+| 改进的 PFP-Growth                      | 3467 s   | 7.29               |
+| 改进的 PFP-Growth + 用户概貌数据重分区 | 2358 s   | 10.7               |
 
 ## 程序代码说明
 
